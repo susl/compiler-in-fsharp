@@ -1,0 +1,675 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Introduction to Compilers in F#</title>
+    <meta name="description" content="">
+    <meta name="author" content="Dmytro Suvorov">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="//code.jquery.com/jquery-1.8.0.js"></script>
+    <script src="//code.jquery.com/ui/1.8.23/jquery-ui.js"></script>
+    <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/css/bootstrap-combined.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/solarized.css" id="theme">
+    <link type="text/css" rel="stylesheet" href="fsharp.formatting/styles/style.css" />
+    <link type="text/css" rel="stylesheet" href="fsharp.formatting/styles/deedle.css" />
+    <link type="text/css" rel="stylesheet" href="css/custom.css" />
+    <script src="fsharp.formatting/styles/tips.js" type="text/javascript"></script>
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+    <!-- If the query includes 'print-pdf', include the PDF print sheet -->
+    <script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+    </script>
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+</head>
+<body>
+    <div class="reveal">
+        <div class="tip" id="fs1">val not : value:bool -&gt; bool<br /><br />Full name: Microsoft.FSharp.Core.Operators.not</div>
+<div class="tip" id="fs2">Multiple items<br />module List<br /><br />from Microsoft.FSharp.Collections<br /><br />--------------------<br />type List&lt;&#39;T&gt; =<br />&#160;&#160;| ( [] )<br />&#160;&#160;| ( :: ) of Head: &#39;T * Tail: &#39;T list<br />&#160;&#160;interface IEnumerable<br />&#160;&#160;interface IEnumerable&lt;&#39;T&gt;<br />&#160;&#160;member Head : &#39;T<br />&#160;&#160;member IsEmpty : bool<br />&#160;&#160;member Item : index:int -&gt; &#39;T with get<br />&#160;&#160;member Length : int<br />&#160;&#160;member Tail : &#39;T list<br />&#160;&#160;static member Cons : head:&#39;T * tail:&#39;T list -&gt; &#39;T list<br />&#160;&#160;static member Empty : &#39;T list<br /><br />Full name: Microsoft.FSharp.Collections.List&lt;_&gt;</div>
+<div class="tip" id="fs3">val map : mapping:(&#39;T -&gt; &#39;U) -&gt; list:&#39;T list -&gt; &#39;U list<br /><br />Full name: Microsoft.FSharp.Collections.List.map</div>
+<div class="tip" id="fs4">val reduce : reduction:(&#39;T -&gt; &#39;T -&gt; &#39;T) -&gt; list:&#39;T list -&gt; &#39;T<br /><br />Full name: Microsoft.FSharp.Collections.List.reduce</div>
+<div class="tip" id="fs5">val sum : list:&#39;T list -&gt; &#39;T (requires member ( + ) and member get_Zero)<br /><br />Full name: Microsoft.FSharp.Collections.List.sum</div>
+<div class="tip" id="fs6">Multiple items<br />val string : value:&#39;T -&gt; string<br /><br />Full name: Microsoft.FSharp.Core.Operators.string<br /><br />--------------------<br />type string = System.String<br /><br />Full name: Microsoft.FSharp.Core.string</div>
+<div class="tip" id="fs7">Multiple items<br />val float : value:&#39;T -&gt; float (requires member op_Explicit)<br /><br />Full name: Microsoft.FSharp.Core.Operators.float<br /><br />--------------------<br />type float = System.Double<br /><br />Full name: Microsoft.FSharp.Core.float<br /><br />--------------------<br />type float&lt;&#39;Measure&gt; = float<br /><br />Full name: Microsoft.FSharp.Core.float&lt;_&gt;</div>
+<div class="tip" id="fs8">val printfn : format:Printf.TextWriterFormat&lt;&#39;T&gt; -&gt; &#39;T<br /><br />Full name: Microsoft.FSharp.Core.ExtraTopLevelOperators.printfn</div>
+<div class="tip" id="fs9">type &#39;T list = List&lt;&#39;T&gt;<br /><br />Full name: Microsoft.FSharp.Collections.list&lt;_&gt;</div>
+<div class="tip" id="fs10">Multiple items<br />val int : value:&#39;T -&gt; int (requires member op_Explicit)<br /><br />Full name: Microsoft.FSharp.Core.Operators.int<br /><br />--------------------<br />type int = int32<br /><br />Full name: Microsoft.FSharp.Core.int<br /><br />--------------------<br />type int&lt;&#39;Measure&gt; = int<br /><br />Full name: Microsoft.FSharp.Core.int&lt;_&gt;</div>
+<div class="tip" id="fs11">module String<br /><br />from Microsoft.FSharp.Core</div>
+<div class="tip" id="fs12">type bool = System.Boolean<br /><br />Full name: Microsoft.FSharp.Core.bool</div>
+
+        <!-- Any section element inside of this container is displayed as a slide -->
+        <div class="slides">
+            <section >
+
+<h3>Why compilers?</h3>
+
+<ul>
+<li>It is fun</li>
+<li>Everyone needs to know this</li>
+<li>It is (usually) much easier than you think it is</li>
+<li>BTM must live!</li>
+</ul>
+
+</section>
+
+<section >
+
+<h3>Why F#</h3>
+
+<ul>
+<li>It is fun :D</li>
+<li>Language itself is very well suited for compilers
+<ul>
+<li>based on OCaml</li>
+</ul></li>
+<li>Has great tools (FsLexYacc, FParsec)</li>
+<li>Targets .NET (familiarity, decent IL)</li>
+<li>Learning F# is good for your mental health :)</li>
+</ul>
+
+</section>
+
+<section >
+
+<h3>Overview of today's presentation</h3>
+
+<ul>
+<li>What we want to write (in the end)</li>
+<li>Quick (and not so accurate) history of PLs</li>
+<li>10min intro to F#</li>
+<li>A quick intro to how compilers work</li>
+<li>Let's write (in real time) a small interpreter for our language</li>
+</ul>
+
+</section>
+
+<section >
+
+<section >
+
+<h3>What we want to write (in the end)</h3>
+
+<ul>
+<li>A simple Rule Engine (similar to how we use CodeEffects)</li>
+<li>Receive some model (object) as an input</li>
+<li>Check some condition, return bool</li>
+</ul>
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l">1: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span onmouseout="hideTip(event, 'fs1', 1)" onmouseover="showTip(event, 'fs1', 1)" class="f">not</span>(<span class="i">Amount</span> <span class="o">&lt;</span> <span class="n">10</span>) <span class="k">and</span> <span class="i">HasTag</span>(<span class="o">&#39;</span><span class="i">vip&#39;</span>) <span class="o">=</span> <span class="k">true</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+<span class="l">12: </span>
+<span class="l">13: </span>
+<span class="l">14: </span>
+<span class="l">15: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip" lang="cs"><span class="k">public</span> <span class="k">class</span> Model
+{
+    <span class="k">public</span> <span class="k">int</span> Amount { get; set; }
+    <span class="k">public</span> <span class="k">bool</span> HasTag(<span class="k">string</span> tag) {
+        <span class="k">return</span> _tags.Contains(tag);
+    }
+
+    <span class="k">public</span> Model(<span class="k">int</span> amount, <span class="k">string</span>[] tags)
+    {
+        Amount <span class="o">=</span> amount;
+        _tags <span class="o">=</span> tags;
+    }
+
+    <span class="k">private</span> <span class="k">readonly</span> <span class="k">string</span>[] _tags;
+}
+</pre></td></tr></table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l">1: </span>
+<span class="l">2: </span>
+<span class="l">3: </span>
+<span class="l">4: </span>
+<span class="l">5: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip" lang="cs"><span class="k">var</span> rule <span class="o">=</span> <span class="s">"not(Amount &lt; 10) and HasTag('vip') = true"</span>;
+<span class="k">var</span> compiled <span class="o">=</span> RuleCompiler.Compile&lt;Model&gt;(rule);
+<span class="k">var</span> model <span class="o">=</span> <span class="k">new</span> Model(42, <span class="k">new</span>[] { <span class="s">"vip"</span> });
+<span class="k">var</span> result <span class="o">=</span> compiled(model);
+Console.WriteLine(result);
+</pre></td></tr></table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h1><strong>DEMO</strong></h1>
+
+</section>
+
+</section>
+
+<section >
+
+<section >
+
+<h3>Quick (and not so accurate) history of PLs</h3>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>50s-70s</h4>
+
+<p>Back in the 50s-70s, programming languages were a BigDeal,
+with large investments, upfront planning,
+and standardization committees
+(Ada is a great example)</p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>50s-70s examples</h4>
+
+<ul>
+<li><strong>Fortran</strong>, 50s, originally developed by IBM as part of their core business in computing machines.</li>
+<li><strong>Cobol</strong>, late 50s, designed by a large committee from the onset, sponsored by the DoD.</li>
+<li><strong>Lisp</strong>, late 50s, main project occupying 2 professors at MIT and their students,
+with the grand goal of producing an algebraic list processing language for artificial intelligence work, also funded by the DoD.</li>
+<li><strong>C</strong>, early 70s, part of the large investment that Bell Labs was doing in the development of Unix.</li>
+<li><strong>Smalltalk</strong>, early 70s, part of a large investment that Xerox did in "inventing the future" of computers.</li>
+</ul>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>80s</h4>
+
+<p>Things have changed dramatically during the 80s.</p>
+
+<ul>
+<li>Decent middle-level languages (C, Pascal) became very popular.</li>
+<li>Parsing and lexing were considered a solved problem.</li>
+<li>A lot of good and well-tested tools were written.</li>
+</ul>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>90s</h4>
+
+<p>Since the 90s, a considerable percentage of new languages
+that ended up being very popular were designed by lone programmers,
+some of them kids with no research inclination, some as a side hobby.</p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>90s examples</h4>
+
+<ul>
+<li><strong>PHP</strong>, by Rasmus Lerdorf, 1994, originally used for tracking visits to his online resume</li>
+<li><strong>JavaScript</strong>, by Brendan Eich, 1995, "Plus, I had to be done in ten days or something worse than JS would have happened."</li>
+<li><strong>Python</strong>, by Guido van Rossum, 1990, "I was looking for a 'hobby' programming project"</li>
+<li><strong>Ruby</strong>, by Yukihiro 'Matz' Matsumoto, 1994, "I wanted a scripting language that was more powerful than Perl"</li>
+</ul>
+
+</section>
+
+</section>
+
+<section >
+
+<section >
+
+<h3>Moral of the story</h3>
+
+<p>There is a lot of fun in designing new languages,
+but this fun is not an exclusive right of researchers with Ph.Ds.</p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<p>Given all the knowledge about programming languages these days, anyone can do it.</p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<p>And many do.</p>
+
+<p>Go ahead and write something ;)</p>
+
+<p>It <em>will</em> be fun!</p>
+
+</section>
+
+</section>
+
+<section >
+
+<section >
+
+<h3>10min intro to F#</h3>
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l">1: </span>
+<span class="l">2: </span>
+<span class="l">3: </span>
+<span class="l">4: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// The &quot;let&quot; keyword defines an (immutable) value</span>
+<span class="k">let</span> <span class="i">myInt</span> <span class="o">=</span> <span class="n">5</span>
+<span class="k">let</span> <span class="i">myFloat</span> <span class="o">=</span> <span class="n">3.14</span>
+<span class="k">let</span> <span class="i">myString</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span>   <span class="c">//note that no types needed</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l">1: </span>
+<span class="l">2: </span>
+<span class="l">3: </span>
+<span class="l">4: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// ======== Lists =========</span>
+<span class="k">let</span> <span class="i">oneToFive</span> <span class="o">=</span> [<span class="n">1</span>;<span class="n">2</span>;<span class="n">3</span>;<span class="n">4</span>;<span class="n">5</span>]
+<span onmouseout="hideTip(event, 'fs2', 2)" onmouseover="showTip(event, 'fs2', 2)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs3', 3)" onmouseover="showTip(event, 'fs3', 3)" class="i">map</span> ((<span class="o">+</span>) <span class="n">2</span>) <span class="i">oneToFive</span> <span class="c">// [3;4;5;6;7]</span>
+<span onmouseout="hideTip(event, 'fs2', 4)" onmouseover="showTip(event, 'fs2', 4)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs4', 5)" onmouseover="showTip(event, 'fs4', 5)" class="i">reduce</span> (<span class="o">+</span>) <span class="i">oneToFive</span> <span class="c">// 15</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+<span class="l">12: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// ======== Functions ========</span>
+<span class="k">let</span> <span class="i">square</span> <span class="i">x</span> <span class="o">=</span> <span class="i">x</span> <span class="o">*</span> <span class="i">x</span>
+<span class="i">square</span> <span class="n">3</span>
+<span class="c">// In F# there is no &quot;return&quot; keyword. A function always</span>
+<span class="c">// returns the value of the last expression used.</span>
+
+<span class="k">let</span> <span class="i">add</span> <span class="i">x</span> <span class="i">y</span> <span class="o">=</span>     <span class="c">// F# is indentation-based language</span>
+    <span class="i">x</span> <span class="o">+</span> <span class="i">y</span>         <span class="c">// (like Python and Haskell)</span>
+<span class="i">add</span> <span class="n">2</span> <span class="n">3</span>
+
+<span class="k">let</span> <span class="i">add1</span> <span class="o">=</span> <span class="i">add</span> <span class="n">1</span>
+<span class="i">add1</span> <span class="n">10</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// ====== Pipes =======</span>
+<span class="i">square</span> <span class="n">3</span>
+<span class="n">3</span> <span class="o">|&gt;</span> <span class="i">square</span>
+<span class="n">3</span> <span class="o">|&gt;</span> <span class="i">square</span> <span class="o">|&gt;</span> <span class="i">add</span> <span class="n">10</span>
+
+<span class="c">// sumOfSquaresTo100</span>
+<span onmouseout="hideTip(event, 'fs2', 6)" onmouseover="showTip(event, 'fs2', 6)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs5', 7)" onmouseover="showTip(event, 'fs5', 7)" class="i">sum</span> ( <span onmouseout="hideTip(event, 'fs2', 8)" onmouseover="showTip(event, 'fs2', 8)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs3', 9)" onmouseover="showTip(event, 'fs3', 9)" class="i">map</span> <span class="i">square</span> [<span class="n">1..</span><span class="n">100</span>] )
+
+[<span class="n">1..</span><span class="n">100</span>] <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs2', 10)" onmouseover="showTip(event, 'fs2', 10)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs3', 11)" onmouseover="showTip(event, 'fs3', 11)" class="i">map</span> <span class="i">square</span> <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs2', 12)" onmouseover="showTip(event, 'fs2', 12)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs5', 13)" onmouseover="showTip(event, 'fs5', 13)" class="i">sum</span>
+[<span class="n">1..</span><span class="n">100</span>] <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs2', 14)" onmouseover="showTip(event, 'fs2', 14)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs3', 15)" onmouseover="showTip(event, 'fs3', 15)" class="i">map</span> (<span class="k">fun</span> <span class="i">x</span><span class="k">-&gt;</span> <span class="i">x</span> <span class="o">*</span> <span class="i">x</span>) <span class="o">|&gt;</span> <span onmouseout="hideTip(event, 'fs2', 16)" onmouseover="showTip(event, 'fs2', 16)" class="i">List</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs5', 17)" onmouseover="showTip(event, 'fs5', 17)" class="i">sum</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+<span class="l">12: </span>
+<span class="l">13: </span>
+<span class="l">14: </span>
+<span class="l">15: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// ========= Complex Data Types =========</span>
+
+<span class="c">//tuples are quick &#39;n easy anonymous types</span>
+<span class="k">let</span> <span class="i">twoTuple</span> <span class="o">=</span> (<span class="n">1</span>, <span class="n">2</span>)
+<span class="k">let</span> <span class="i">threeTuple</span> <span class="o">=</span> (<span class="s">&quot;a&quot;</span>, <span class="n">2</span>, <span class="k">true</span>)
+
+<span class="c">//record types have named fields</span>
+<span class="k">type</span> <span class="i">Person</span> <span class="o">=</span> { <span class="i">First</span><span class="o">:</span><span onmouseout="hideTip(event, 'fs6', 18)" onmouseover="showTip(event, 'fs6', 18)" class="i">string</span>; <span class="i">Last</span><span class="o">:</span><span onmouseout="hideTip(event, 'fs6', 19)" onmouseover="showTip(event, 'fs6', 19)" class="i">string</span> }
+<span class="k">let</span> <span class="i">person1</span> <span class="o">=</span> { <span class="i">First</span><span class="o">=</span><span class="s">&quot;john&quot;</span>; <span class="i">Last</span><span class="o">=</span><span class="s">&quot;Doe&quot;</span> }
+
+<span class="c">//union types have choices</span>
+<span class="k">type</span> <span class="i">Temp</span> <span class="o">=</span>
+    | <span class="i">DegreesC</span> <span class="k">of</span> <span onmouseout="hideTip(event, 'fs7', 20)" onmouseover="showTip(event, 'fs7', 20)" class="i">float</span>
+    | <span class="i">DegreesF</span> <span class="k">of</span> <span onmouseout="hideTip(event, 'fs7', 21)" onmouseover="showTip(event, 'fs7', 21)" class="i">float</span>
+<span class="k">let</span> <span class="i">temp</span> <span class="o">=</span> <span class="i">DegreesF</span> <span class="n">98.6</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// ======== Pattern Matching ========</span>
+
+<span class="c">// Match..with.. is a supercharged case/switch statement.</span>
+<span class="k">let</span> <span class="i">printTemp</span> <span class="i">temp</span> <span class="o">=</span>
+    <span class="k">match</span> <span class="i">temp</span> <span class="k">with</span>
+        | <span class="i">DegreesF</span> <span class="i">f</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs8', 22)" onmouseover="showTip(event, 'fs8', 22)" class="i">printfn</span> <span class="s">&quot;%f degrees F&quot;</span> <span class="i">f</span>
+        | <span class="i">DegreesC</span> <span class="i">c</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs8', 23)" onmouseover="showTip(event, 'fs8', 23)" class="i">printfn</span> <span class="s">&quot;%f degrees C&quot;</span> <span class="i">c</span>
+
+<span class="k">let</span> <span class="i">printTemp&#39;</span> <span class="o">=</span> <span class="k">function</span>
+    | <span class="i">DegreesF</span> <span class="i">f</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs8', 24)" onmouseover="showTip(event, 'fs8', 24)" class="i">printfn</span> <span class="s">&quot;%f degrees F&quot;</span> <span class="i">f</span>
+    | <span class="i">DegreesC</span> <span class="i">c</span> <span class="k">-&gt;</span> <span onmouseout="hideTip(event, 'fs8', 25)" onmouseover="showTip(event, 'fs8', 25)" class="i">printfn</span> <span class="s">&quot;%f degrees C&quot;</span> <span class="i">c</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+</section>
+
+<section >
+
+<section >
+
+<h3>A quick intro to how compilers work</h3>
+
+<p><img src="images/compiler-arch.png" alt="Compiler Architecture" /></p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>Frontend</h4>
+
+<p><img src="images/frontend.jpg" alt="Compiler Frontend" /></p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h4>Backend</h4>
+
+<p><img src="images/backend.png" alt="Compiler Backend" /></p>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<h3>Always start in the middle!</h3>
+
+<ul>
+<li>More freedom to experiment
+<ul>
+<li>Your choice of AST will always be wrong :)</li>
+<li>You want to iterate quickly</li>
+</ul></li>
+<li>Changing Interpreter is easy</li>
+<li>Changing Parser and Code Generator is hard</li>
+</ul>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<p>And you may find out that you don't even need an
+external language.</p>
+
+<p>Internal DSL may serve your goal pretty well.</p>
+
+</section>
+
+</section>
+
+<section >
+
+<section >
+
+<h3>Let's write (in real time) a small interpreter for our language</h3>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+<span class="l">12: </span>
+<span class="l">13: </span>
+<span class="l">14: </span>
+<span class="l">15: </span>
+<span class="l">16: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// not(Amount &lt; 10) and HasTag(&#39;vip&#39;) = true</span>
+<span class="k">type</span> <span class="i">complexBoolExp</span> <span class="o">=</span>
+    | <span class="i">And</span> <span class="k">of</span> <span class="i">complexBoolExp</span> <span onmouseout="hideTip(event, 'fs9', 26)" onmouseover="showTip(event, 'fs9', 26)" class="i">list</span>
+    | <span class="i">Or</span> <span class="k">of</span> <span class="i">complexBoolExp</span> <span onmouseout="hideTip(event, 'fs9', 27)" onmouseover="showTip(event, 'fs9', 27)" class="i">list</span>
+    | <span class="i">Not</span> <span class="k">of</span> <span class="i">complexBoolExp</span>
+    | <span class="i">Comparison</span> <span class="k">of</span> <span class="i">valueExp</span> <span class="o">*</span> <span class="i">op</span> <span class="o">*</span> <span class="i">valueExp</span>
+<span class="k">and</span> <span class="i">op</span> <span class="o">=</span> <span class="i">Eq</span> | <span class="i">Lt</span> | <span class="i">Gt</span>
+<span class="k">and</span> <span class="i">identifier</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs6', 28)" onmouseover="showTip(event, 'fs6', 28)" class="i">string</span>
+<span class="k">and</span> <span class="i">valueExp</span> <span class="o">=</span>
+    | <span class="i">Constant</span> <span class="k">of</span> <span class="i">constant</span>
+    | <span class="i">Property</span> <span class="k">of</span> <span class="i">identifier</span>
+    | <span class="i">Func</span> <span class="k">of</span> <span class="i">identifier</span> <span class="o">*</span> <span class="i">valueExp</span> <span onmouseout="hideTip(event, 'fs9', 29)" onmouseover="showTip(event, 'fs9', 29)" class="i">list</span>
+<span class="k">and</span> <span class="i">constant</span> <span class="o">=</span>
+    | <span class="i">Int</span> <span class="k">of</span> <span onmouseout="hideTip(event, 'fs10', 30)" onmouseover="showTip(event, 'fs10', 30)" class="i">int</span>
+    | <span onmouseout="hideTip(event, 'fs11', 31)" onmouseover="showTip(event, 'fs11', 31)" class="i">String</span> <span class="k">of</span> <span onmouseout="hideTip(event, 'fs6', 32)" onmouseover="showTip(event, 'fs6', 32)" class="i">string</span>
+    | <span class="i">Bool</span> <span class="k">of</span> <span onmouseout="hideTip(event, 'fs12', 33)" onmouseover="showTip(event, 'fs12', 33)" class="i">bool</span>
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+<section author="Dmytro Suvorov" description="" theme="solarized" title="Introduction to Compilers in F#" transition="default">
+
+<table class="pre"><tr><td class="lines"><pre class="fssnip">
+<span class="l"> 1: </span>
+<span class="l"> 2: </span>
+<span class="l"> 3: </span>
+<span class="l"> 4: </span>
+<span class="l"> 5: </span>
+<span class="l"> 6: </span>
+<span class="l"> 7: </span>
+<span class="l"> 8: </span>
+<span class="l"> 9: </span>
+<span class="l">10: </span>
+<span class="l">11: </span>
+<span class="l">12: </span>
+</pre>
+</td>
+<td class="snippet"><pre class="fssnip">
+<span class="c">// Amount &lt; 10</span>
+<span class="k">let</span> <span class="i">checkAmount</span> <span class="o">=</span> <span class="i">Comparison</span>(
+    <span class="i">Property</span> <span class="s">&quot;Amount&quot;</span>,
+    <span class="i">Lt</span>,
+    <span class="i">Constant</span>(<span class="i">Int</span> <span class="n">10</span>))
+<span class="c">// HasTag(&#39;vip&#39;) = true</span>
+<span class="k">let</span> <span class="i">hasVipTag</span> <span class="o">=</span> <span class="i">Comparison</span>(
+    <span class="i">Func</span>(<span class="s">&quot;HasTag&quot;</span>, [<span class="i">Constant</span>(<span onmouseout="hideTip(event, 'fs11', 34)" onmouseover="showTip(event, 'fs11', 34)" class="i">String</span> <span class="s">&quot;vip&quot;</span>)]),
+    <span class="i">Eq</span>,
+    <span class="i">Constant</span>(<span class="i">Bool</span> <span class="k">true</span>))
+<span class="c">// not(Amount &lt; 10) and (HasTag(&#39;vip&#39;) = true)</span>
+<span class="k">let</span> <span class="i">complexExp</span> <span class="o">=</span> <span class="i">And</span>([<span class="i">Not</span>(<span class="i">checkAmount</span>); <span class="i">hasVipTag</span>])
+</pre>
+</td>
+</tr>
+</table>
+
+</section>
+
+</section>
+
+<section >
+
+<h1><strong>CODING TIME!</strong></h1>
+
+</section>
+
+
+
+        </div>
+    </div>
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+    <script>
+
+        // Full list of configuration options available here:
+        // https://github.com/hakimel/reveal.js#configuration
+        Reveal.initialize({
+            controls: true,
+            progress: true,
+            history: true,
+            center: true,
+
+            transition: 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+            // Parallax scrolling
+            // parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+            // parallaxBackgroundSize: '2100px 900px',
+
+            // Optional libraries used to extend on reveal.js
+            dependencies: [
+                { src: 'lib/js/classList.js', condition: function () { return !document.body.classList; } },
+                { src: 'plugin/markdown/marked.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+                { src: 'plugin/markdown/markdown.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+                { src: 'plugin/highlight/highlight.js', async: true, callback: function () { hljs.initHighlightingOnLoad(); } },
+                { src: 'plugin/zoom-js/zoom.js', async: true, condition: function () { return !!document.body.classList; } },
+                { src: 'plugin/notes/notes.js', async: true, condition: function () { return !!document.body.classList; } }
+            ]
+        });
+
+    </script>
+</body>
+</html>
+
