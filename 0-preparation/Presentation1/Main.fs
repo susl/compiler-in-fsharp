@@ -4,7 +4,9 @@ open System
 
 // not(Amount < 10) and HasTag('vip') = true
 
-type ast = complexBoolExp
+type ast = 
+    | Eval of complexBoolExp
+    | Exec of (complexBoolExp * funccall) list * funccall option
 and complexBoolExp =
     | Comparison of valueExp * op * valueExp
     | Not of complexBoolExp
@@ -14,7 +16,8 @@ and op = Eq | Lt | Gt
 and valueExp =
     | Constant of constant
     | Property of identifier
-    | Func of identifier * valueExp list
+    | Func of funccall
+and funccall = identifier * valueExp list
 and constant =
     | Int of int
     | String of string
@@ -42,6 +45,9 @@ let hasVipTag = Comparison(Func("HasTag", [Constant(String "vip")]), Eq, Constan
 // not(Amount < 10) and (HasTag('vip') = true)
 let complexExp = And([Not(checkAmount); hasVipTag])
 
+// if Amount < 10 then Refuse('amount') else if HasTag('vip') = true then Refuse('vip') else Refuse('else')
+let refuse reason = ("Refuse", [Constant(String reason)])
+let complexExec = Exec([(checkAmount, refuse "amount"); (hasVipTag, refuse "vip")], Some(refuse "else"))
 
 // ============= Interpreter
 
@@ -63,10 +69,11 @@ let eval ctx exp =
     let rec evalValueExp = function
         | Constant l -> evalConstant l
         | Property p -> ctx.getPropValue p
-        | Func(fname, argExps) ->
-            let args = argExps |> List.map evalValueExp
-            let f = ctx.getFunc fname
-            f args
+        | Func f -> callFunction f
+    and callFunction(fname, argExps) = 
+        let args = argExps |> List.map evalValueExp
+        let f = ctx.getFunc fname
+        f args
 
     // ideally, we want this, but we have to jump over some hoops because of .net
     let evalOp' = function
@@ -87,9 +94,17 @@ let eval ctx exp =
             op' left' right'
         | Not e -> e |> evalComplexBoolExp |> not
         | And es -> es |> List.map evalComplexBoolExp |> List.reduce (&&)
-        | Or es -> es |> List.map evalComplexBoolExp |> List.reduce (||)
+        | Or es -> es |> List.map evalComplexBoolExp |> List.reduce (||)        
 
-    evalComplexBoolExp exp
+    let evalAst = function
+        | Eval(c) -> evalComplexBoolExp c
+        | Exec(ifs, els) ->
+            let branch = ifs |> List.tryFind (fun (cond, _) -> evalComplexBoolExp cond)
+            match branch, els with
+                | Some(_, action), _ | None, Some action -> callFunction action |> ignore; true
+                | None, None -> false
+        
+    evalAst exp
 
 // ============= Compile To Linq Expressions
 
@@ -129,7 +144,10 @@ let compileToLinq<'model> exp =
                     |> List.map compileComplexBoolExp
                     |> List.reduce (fun l r -> Expression.OrElse(l, r) :> Expression)
 
-    let body = compileComplexBoolExp exp
+    let compileAst = function
+        | Eval(c) -> compileComplexBoolExp c
+
+    let body = compileAst exp
     let compiledExp = Expression.Lambda(body, model)
     let compiledFun = compiledExp.Compile() :?> Func<'model, bool>
 
@@ -157,16 +175,17 @@ let inferType ctx exp =
         | Func(fname, argExps) ->
             match ctx.getFuncType fname with
                 | None -> failwith <| sprintf "undefined fucntion %A" fname
-                | Some(freturnType, fargTypes) ->
-                    let argTypes = argExps |> List.map typeValueExp
-                    // check argument types
-                    List.iteri2 (fun idx argType fargType ->
-                        if(not(argType.Equals(fargType)))then
-                            failwith <| sprintf "Argument of func %A at position %A has type %A, but %A was expected" fname idx argType fargType
-                    ) argTypes fargTypes
-                    // return function return type
-                    freturnType
-
+                | Some ftype -> checkFuncCall (fname, argExps) ftype
+    and checkFuncCall (fname, argExps) (freturnType, fargTypes) = 
+        let argTypes = argExps |> List.map typeValueExp
+        checkArgs argTypes fargTypes fname
+        freturnType
+    and checkArgs argTypes fargTypes fname = 
+        List.iteri2 (fun idx argType fargType ->
+            if(not(argType.Equals(fargType)))then
+                failwith <| sprintf "Argument of func %A at position %A has type %A, but %A was expected" fname idx argType fargType
+        ) argTypes fargTypes
+        
     let rec typeComplexBoolExp = function
         | Comparison(left, op, right) ->
             let leftT = typeValueExp left
@@ -179,7 +198,19 @@ let inferType ctx exp =
         | And es -> es |> List.map typeComplexBoolExp |> ignore; typeof<bool>
         | Or es -> es |> List.map typeComplexBoolExp |> ignore; typeof<bool>
 
-    typeComplexBoolExp exp
+    let typeAst = function
+        | Eval(c) -> typeComplexBoolExp c
+        | Exec(ifs, els) ->
+            ifs |> List.iter (fun (c, a) -> 
+                typeComplexBoolExp c |> ignore;
+                checkFuncCall a |> ignore;
+            )
+            match els with
+                | Some a -> checkFuncCall a |> ignore; typeof<bool>
+                | None -> typeof<bool>
+            
+
+    typeAst exp
 
 let typecheck typectx exp =
     let t = inferType typectx exp // will throw on error
@@ -205,10 +236,11 @@ let pintConstant = pint32 |>> Int
 let pconstant = (pintConstant <|> pboolConstant <|> pstringConstant) |>> Constant
 let pproperty = pidentifier |>> Property
 let pfunccall, pfunccallimpl = createParserForwardedToRef ()
-let pvalue = choice[ pconstant; attempt pfunccall <|> attempt pproperty ]
+let pfunccallExp = pfunccall |>> Func
+let pvalue = choice[ pconstant; attempt pfunccallExp <|> attempt pproperty ]
 
 let pargs = between (str_ws "(") (str_ws ")") (sepBy pvalue (str_ws ","))
-pfunccallimpl := tuple2 pidentifier pargs |>> Func
+pfunccallimpl := tuple2 pidentifier pargs
 
 let poperator = ws >>. choice[stringReturn "=" Eq; stringReturn "<" Lt; stringReturn ">" Gt] .>> ws
 let pcomparison = tuple3 pvalue poperator pvalue |>> Comparison
@@ -221,8 +253,16 @@ oppl.AddOperator(InfixOperator("or", ws, 1, Associativity.Left, fun x y -> Or [x
 oppl.AddOperator(InfixOperator("and", ws, 2, Associativity.Left, fun x y -> And [x; y]))
 oppl.AddOperator(PrefixOperator("not", ws, 3, true, Not))
 
+let peval = (str_ws "check") >>. pcomplex |>> Eval
+
+let pif = pcomplex .>> str_ws "then" .>>. pfunccall
+let pelse = str_ws "else" >>. pfunccall
+let pexec = (str_ws "if") >>. sepBy1 pif (str_ws "else if") .>>. opt pelse |>> Exec
+
+let past = peval <|> pexec
+
 let parse =
-    run pcomplex >> function
+    run past >> function
         | Success(result, _, _) -> result
         | Failure(_, error, _) -> failwith <| sprintf "%A" error
 
@@ -264,7 +304,10 @@ let compileToIL<'model> (il : ILGenerator) exp =
             il.Emit(OpCodes.Ldc_I4_0)
             es |> List.fold (fun _ e -> compileComplexBoolExp e; il.Emit(OpCodes.Or)) ()
 
-    compileComplexBoolExp exp
+    let compileAst = function
+        | Eval(c) -> compileComplexBoolExp c
+
+    compileAst exp
     il.Emit(OpCodes.Ret)
 
 let compileToDynamicMethod<'model> exp =

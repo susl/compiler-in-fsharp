@@ -6,9 +6,11 @@ let evaltests (eval: ast -> bool) =
         assert (expected = actual)
         printfn "Expr: %A was evaluated to %A" expr actual
 
-    test checkAmount false;
-    test hasVipTag true;
-    test complexExp true;
+    test (Eval(checkAmount)) false;
+    test (Eval(hasVipTag)) true;
+    test (Eval(complexExp)) true;
+
+    test complexExec true;
 
 let testEval () =
     let ctx =
@@ -21,6 +23,11 @@ let testEval () =
                     fun [arg1] ->
                         let tag = arg1 :?> string
                         tag = "vip" |> box
+                | "Refuse" -> 
+                    fun [arg1] ->
+                        let reason = arg1 :?> string
+                        printfn "Refused with %s" reason;
+                        () |> box
                 | x -> failwith <| sprintf "unknown function %s" x
         }
 
@@ -62,7 +69,7 @@ let testCompileToIL () =
     evaltests compileAndRun
 
 let testCompileToDLL () =
-    compileToDll<Model> complexExp "Complex" "CompiledRules"
+    compileToDll<Model> (Eval(complexExp)) "Complex" "CompiledRules"
     //compileToDll<Model> checkAmount "Complex" "CompiledRules"
     //compileToDll<Model> (Not(checkAmount)) "Complex" "CompiledRules"
     //compileToDll<Model> hasVipTag "Complex" "CompiledRules"
@@ -75,6 +82,7 @@ let testTypechecker () =
                 | _ -> None;
             getFuncType = function
                 | "HasTag" -> Some(typeof<bool>, [typeof<string>])
+                | "Refuse" -> Some(typeof<unit>, [typeof<string>])
                 | _ -> None
         }
 
@@ -82,9 +90,10 @@ let testTypechecker () =
         printfn "Testing: %A" exp
         assert((inferType typectx exp) = typeof<bool>)
 
-    test checkAmount
-    test hasVipTag
-    test complexExp
+    test (Eval(checkAmount))
+    test (Eval(hasVipTag))
+    test (Eval(complexExp))
+    test complexExec
 
 let testParser () =
     let test s exp =
@@ -92,12 +101,14 @@ let testParser () =
         printfn "%A parsed to %A, expected: %A" s parsed exp
         assert(exp = parsed)
 
-    test "Amount < 10" <| checkAmount
-    test "HasTag('vip') = true" <| hasVipTag
-    test "not(Amount < 10) and HasTag('vip') = true" <| complexExp
+    test "check Amount < 10" <| Eval(checkAmount)
+    test "check HasTag('vip') = true" <| Eval(hasVipTag)
+    test "check not(Amount < 10) and HasTag('vip') = true" <| Eval(complexExp)
+    test "if Amount < 10 then Refuse('amount')" <| Exec([(checkAmount, refuse "amount")], None)
+    test "if Amount < 10 then Refuse('amount') else if HasTag('vip') = true then Refuse('vip') else Refuse('else')" <| complexExec
 
 let testPipeline () =
-    let rule = "Amount > 10 and HasTag('vip') = true"
+    let rule = "check Amount > 10 and HasTag('vip') = true"
     let compiled = compile<Model> rule
 
     let test model =
@@ -119,10 +130,10 @@ let printfnc s =
 [<EntryPoint>]
 let main argv =
     printfnc "--- Testing Interpreter ---"; testEval();
-    printfnc "--- Testing CompileToLinq ---"; testCompileToLinq();
+    //printfnc "--- Testing CompileToLinq ---"; testCompileToLinq();
     printfnc "--- Testing Typecheker ---"; testTypechecker();
     printfnc "--- Testing Parser ---"; testParser();
-    printfnc "--- Testing CompileToIL ---"; testCompileToIL();
-    printfnc "--- Testing CompileToDLL ---"; testCompileToDLL();
-    printfnc "=== Testing Whole Pipeline Together =="; testPipeline();
+    //printfnc "--- Testing CompileToIL ---"; testCompileToIL();
+    //printfnc "--- Testing CompileToDLL ---"; testCompileToDLL();
+    //printfnc "=== Testing Whole Pipeline Together =="; testPipeline();
     0 // return an integer exit code
