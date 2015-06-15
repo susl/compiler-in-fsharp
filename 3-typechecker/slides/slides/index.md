@@ -15,10 +15,28 @@
 
 ### Changes to AST
 
+    type ast = 
+        | Eval of complexBoolExp
+        | Exec of (complexBoolExp * funccall) list
+                * funccall option
+    and funccall = identifier * valueExp list
+
 ---
 
 ### Changes to Interpreter
 
+    let evalAst = function
+        | Eval(c) -> evalComplexBoolExp c
+        | Exec(ifs, els) ->
+            let branch = 
+                ifs |> List.tryFind (fun (cond, _) -> 
+                    evalComplexBoolExp cond)
+            match branch, els with
+                | Some(_, action), _
+                | None, Some action -> 
+                    callFunction action |> ignore; true
+                | None, None -> 
+                    false
 
 ***
 
@@ -140,6 +158,7 @@ And using inference rules in such a way is called *abstract interpretation*
 ---
 
 Rules of that form may be used to specify a lot of different (but similar in structure) processes:
+
 - typing
 - evaluation
 - compilation
@@ -178,15 +197,108 @@ $ \frac{}{\{ P\,:\,\tau \}\,\vdash\,P\,:\,\tau} $ when P is a property access
 
 ---
 
-$ \frac{\texttt{a1}\,:\,a_1,\:...,\:\texttt{an}\,:\,a_n}{\Gamma\,\vdash\,\texttt{F(a1,...,an)}\,:\,\tau} $ when F is a method access
+$ \frac{\texttt{a1}\,:\,a_1,\;...,\;\texttt{an}\,:\,a_n}{\Gamma\,\vdash\,\texttt{F(a1,...,an)}\,:\,\tau} $ when F is a method access
 
 provided that $\Gamma$ containt $F\,:\,(\alpha_1,...,\alpha_n) \rightarrow \tau$
 
 ---
+
     | Func(fname, argExps) ->
         match ctx.getFuncType fname with
             | None -> failwith ...
-            | Some(freturnType, fargTypes) ->
-                let argTypes = argExps |> List.map typeValueExp
-                checkArgs(argTypes, fargTypes)
-                freturnType
+            | Some ftype -> 
+                checkFuncCall argExps ftype
+    and checkFuncCall argExps (freturnType, fargTypes) = 
+        let argTypes = 
+            argExps |> List.map typeValueExp
+        checkArgs argTypes fargTypes
+        freturnType
+
+---
+
+$ \frac{\Gamma\,\vdash\,\texttt{left}\,:\,\tau \;\; \Gamma\,\vdash\,\texttt{right}\,:\,\tau}{\Gamma\,\vdash\,\texttt{left = right}\,:\,bool} $
+
+$ \frac{\Gamma\,\vdash\,\texttt{left}\,:\,\tau \;\; \Gamma\,\vdash\,\texttt{right}\,:\,\tau}{\Gamma\,\vdash\,\texttt{left < right}\,:\,bool} $
+
+$ \frac{\Gamma\,\vdash\,\texttt{left}\,:\,\tau \;\; \Gamma\,\vdash\,\texttt{right}\,:\,\tau}{\Gamma\,\vdash\,\texttt{left > right}\,:\,bool} $
+
+---
+    | Comparison(left, op, right) ->
+        let tleft = typeValueExp left
+        let tright = typeValueExp right
+        if(not(tleft.Equals(tright)))then
+            failwith ...
+        typeof<bool>
+---
+
+$ \frac{\Gamma\,\vdash\,\texttt{e}\,:\,bool}{\Gamma\,\vdash\,\texttt{not e}\,:\,bool} $
+
+$ \frac{\Gamma\,\vdash\,\texttt{l}\,:\,bool \;\; \Gamma\,\vdash\,\texttt{r}\,:\,bool}{\Gamma\,\vdash\,\texttt{l and r}\,:\,bool} $
+
+$ \frac{\Gamma\,\vdash\,\texttt{l}\,:\,bool \;\; \Gamma\,\vdash\,\texttt{r}\,:\,bool}{\Gamma\,\vdash\,\texttt{l or r}\,:\,bool} $
+
+---
+    | Not e -> typeComplexBoolExp e
+    | And es -> 
+        es |> List.map typeComplexBoolExp |> ignore
+        typeof<bool>
+    | Or es -> 
+        es |> List.map typeComplexBoolExp |> ignore
+        typeof<bool>
+
+---
+
+$ \frac{\Gamma\,\vdash\,\texttt{e}\,:\,bool}{\Gamma\,\vdash\,\texttt{check e}\,:\,bool} $
+
+---
+        | Eval(c) -> typeComplexBoolExp c
+---
+
+$ \frac{\Gamma\,\vdash\,\texttt{c}\,:\,bool \;\; \Gamma\,\vdash\,\texttt{A}\,:\,\tau_1 \;\; \Gamma\,\vdash\,\texttt{B}\,:\,\tau_2 }{\Gamma\,\vdash\,\texttt{if c then A else B}\,:\,bool} $
+
+provided that $\texttt{A}$ and $\texttt{B}$ are functions in $\Gamma$
+
+---
+        | Exec(ifs, els) ->
+            ifs |> List.iter (fun (c, a) -> 
+                typeComplexBoolExp c |> ignore;
+                checkFuncCall a |> ignore;
+            )
+            match els with
+            | Some a ->
+                 checkFuncCall a |> ignore
+                 typeof<bool>
+            | None -> typeof<bool>
+
+***
+
+### The final result
+
+    let evaluate<'model> rule (model : 'model) =
+        let result = 
+            rule
+            |> Parser.parse
+            |> Typechecker.typecheck<'model>
+            |> Interpreter.interpret model
+        printfn "Evaluated \"%s\" on %A to %A" rule model result
+
+---
+
+    type Model(amount: int, tags: string list) =
+        member x.Amount = amount
+        member x.HasTag(tag) = tags |> List.exists ((=) tag)
+        member x.Refuse(reason) = printfn "Refused with reason: %s" reason
+        override x.ToString() = sprintf "Model(%A, %A)" amount tags
+
+---
+
+    Model(42, ["vip"]) |> evaluate
+        "check not(Amount < 10) and HasTag('vip') = true"
+
+    Model(42, ["vip"]) |> evaluate
+        "if Amount < 10 then
+           Refuse('amount')
+         else if HasTag('vip') = true then
+           Refuse('vip')
+         else
+           Refuse('else')"        
