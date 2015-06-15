@@ -2,7 +2,9 @@
 
 // not(Amount < 10) and HasTag('vip') = true
 
-type ast = complexBoolExp
+type ast = 
+    | Eval of complexBoolExp
+    | Exec of (complexBoolExp * funccall) list * funccall option
 and complexBoolExp =
     | Comparison of valueExp * op * valueExp
     | Not of complexBoolExp
@@ -12,7 +14,8 @@ and op = Eq | Lt | Gt
 and valueExp =
     | Constant of constant
     | Property of identifier
-    | Func of identifier * valueExp list
+    | Func of funccall
+and funccall = identifier * valueExp list
 and constant =
     | Int of int
     | String of string
@@ -40,3 +43,7 @@ module Examples =
     let hasVipTag = Comparison(Func("HasTag", [Constant(String "vip")]), Eq, Constant(Bool true))
     // not(Amount < 10) and (HasTag('vip') = true)
     let complexExp = And([Not(checkAmount); hasVipTag])
+
+    // if Amount < 10 then Refuse('amount') else if HasTag('vip') = true then Refuse('vip') else Refuse('else')
+    let refuse reason = ("Refuse", [Constant(String reason)])
+    let complexExec = Exec([(checkAmount, refuse "amount"); (hasVipTag, refuse "vip")], Some(refuse "else"))

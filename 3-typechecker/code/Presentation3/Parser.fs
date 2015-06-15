@@ -20,10 +20,11 @@ let pintConstant = pint32 |>> Int
 let pconstant = (pintConstant <|> pboolConstant <|> pstringConstant) |>> Constant
 let pproperty = pidentifier |>> Property
 let pfunccall, pfunccallimpl = createParserForwardedToRef ()
-let pvalue = choice[ pconstant; attempt pfunccall <|> attempt pproperty ]
+let pfunccallExp = pfunccall |>> Func
+let pvalue = choice[ pconstant; attempt pfunccallExp <|> attempt pproperty ]
 
 let pargs = between (str_ws "(") (str_ws ")") (sepBy pvalue (str_ws ","))
-pfunccallimpl := tuple2 pidentifier pargs |>> Func
+pfunccallimpl := tuple2 pidentifier pargs
 
 let poperator = ws >>. choice[stringReturn "=" Eq; stringReturn "<" Lt; stringReturn ">" Gt] .>> ws
 let pcomparison = tuple3 pvalue poperator pvalue |>> Comparison
@@ -36,7 +37,15 @@ oppl.AddOperator(InfixOperator("or", ws, 1, Associativity.Left, fun x y -> Or [x
 oppl.AddOperator(InfixOperator("and", ws, 2, Associativity.Left, fun x y -> And [x; y]))
 oppl.AddOperator(PrefixOperator("not", ws, 3, true, Not))
 
+let peval = (str_ws "check") >>. pcomplex |>> Eval
+
+let pif = pcomplex .>> str_ws "then" .>>. pfunccall
+let pelse = str_ws "else" >>. pfunccall
+let pexec = (str_ws "if") >>. sepBy1 pif (str_ws "else if") .>>. opt pelse |>> Exec
+
+let past = peval <|> pexec
+
 let parse =
-    run pcomplex >> function
+    run past >> function
         | Success(result, _, _) -> result
         | Failure(_, error, _) -> failwith <| sprintf "%A" error

@@ -15,12 +15,13 @@ let eval ctx exp =
     let rec evalValueExp = function
         | Constant l -> evalConstant l
         | Property p -> ctx.getPropValue p
-        | Func(fname, argExps) ->
-            let args = argExps |> List.map evalValueExp
-            let f = ctx.getFunc fname
-            f args
+        | Func f -> callFunction f
+    and callFunction(fname, argExps) = 
+        let args = argExps |> List.map evalValueExp
+        let f = ctx.getFunc fname
+        f args
 
-    // ideally, we want this, but we have to jump over some hoops
+    // ideally, we want this, but we have to jump over some hoops because of .net
     let evalOp' = function
         | Eq -> (=)
         | Lt -> (<)
@@ -39,9 +40,17 @@ let eval ctx exp =
             op' left' right'
         | Not e -> e |> evalComplexBoolExp |> not
         | And es -> es |> List.map evalComplexBoolExp |> List.reduce (&&)
-        | Or es -> es |> List.map evalComplexBoolExp |> List.reduce (||)
+        | Or es -> es |> List.map evalComplexBoolExp |> List.reduce (||)        
 
-    evalComplexBoolExp exp
+    let evalAst = function
+        | Eval(c) -> evalComplexBoolExp c
+        | Exec(ifs, els) ->
+            let branch = ifs |> List.tryFind (fun (cond, _) -> evalComplexBoolExp cond)
+            match branch, els with
+                | Some(_, action), _ | None, Some action -> callFunction action |> ignore; true
+                | None, None -> false
+        
+    evalAst exp
 
 
 let dummyctx: context =
@@ -61,3 +70,7 @@ let buildEvalCtx<'model> (m: 'model) =
             | null -> failwith <| sprintf "unknown function %s" f
             | mi -> fun args -> mi.Invoke(m, Array.ofList args)
     }
+
+let interpret<'model> (model: 'model) ast = 
+    let ctx = buildEvalCtx model
+    eval ctx ast
