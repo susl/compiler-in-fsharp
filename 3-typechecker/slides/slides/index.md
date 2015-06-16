@@ -7,9 +7,9 @@
 
 ## Changes to Our Small Language
 
-- we now have 2 type of rules:
-  * eval: "check Amount > 10"
-  * exec: "if Amount > 10 then Refuse()"
+- We now have two type of rules:
+  * **Eval**: "check Amount > 10"
+  * **Exec**: "if Amount > 10 then Refuse()"
 
 ---
 
@@ -42,40 +42,41 @@
 
 ### Static vs Dynamic Typing
 
-- Static Typing: symbols (var, funcs, etc) have type that are checked ahead-of-time (C#)
-- (Strong) Dynamic Typing: symbols have types that are checked during execution (Python)
-- (Weak) Dynamic Typing: "type" may be changed at runtime, strings become numerals, etc (Perl)
+- Static Typing: symbols (var, funcs, etc) have type that are checked ahead-of-time (*C#*)
+- (Strong) Dynamic Typing: symbols have types that are checked during execution (*Python*)
+- (Weak) Dynamic Typing: "type" may be changed at runtime, strings become numerals, etc (*Perl*)
 
 ---
 
 ### The Main Property of a Sound Type System
 
 - Evaluation should preserve types
-  * Or put more simply: there should be no runtime type errors
+  * Or put more simply: there should be no **runtime** type errors
 
 ***
 
 ### Why do we want static type in our rule engine?
 
-- "if 1=1 then Action1(Created) and Action2(Amount)"
-  - what if Action2 accepts string and not interger?
-  - we will execute Action1 and then fail on Action2
-  - essentially, we will execute half of our rule
+    "if 1=1 then Action1(Created) and Action2(Amount)"
+
+  - What if Action2 accepts string and not interger?
+  - We will execute Action1 and then fail on Action2
+  - Essentially, we will execute half of our rule
 
 ---
 
 ### We want some better guarantees
 
-- we want to be more transactional
-  - either we do something fully, or fail early
+- We want to be more transactional
+  - Either we do something fully, or fail early
 
 ---
 
 ### Side note:
 
-- type checking would have also helped us with overload-resolution
-  - what if our model has both Refuse() and Refuse(reason)?
-- but we will not do it for simplicity sake
+- Type checking would have also helped us with overload-resolution
+  - What if our model has both Refuse() and Refuse(reason)?
+- But we will not do it for simplicity sake
 
 ***
 
@@ -85,7 +86,7 @@
 
 $ \Gamma \vdash e : \tau $
 
-Read as:
+Should be read as:
 
 "expression $e$ has type $\tau$ in context $\Gamma$"
 
@@ -107,22 +108,22 @@ $ \{ HasTag : string \rightarrow bool \,\} \vdash \texttt{ HasTag('vip')} : bool
 
 ### difference between type-checker and type-inferencer
 
-- Type checking: given an expression $e$ and a type $\tau$, decide if $e : \tau$
-- Type inference: given an expression $e$, find a type $\tau$ such that $e : \tau$
+- **Type-checking**: given an expression $e$ and a type $\tau$, decide if $e : \tau$
+- **Type-inference**: given an expression $e$, find a type $\tau$ such that $e : \tau$
 
 ---
 
-we don't really need type-inferencer
+We don't really need type-inferencer
 
-we don't even have variables in our language :)
+Because we don't even have variables in our language :)
 
-but we will structure our code as if we are writing a type-inferencer
+But we will structure our code as if we are writing a type-inferencer
 
 ***
 
 ### inference rules
 
-An **inference rule** is a set of premises $P_1, ..., P_n$ and one conclusion $C$, separated by a horizontal line
+An **inference rule** is a set of *premises* $P_1, ..., P_n$ and one *conclusion* $C$, separated by a horizontal line
 
 $ \frac{P_1 ... P_n}{C} $
 
@@ -150,13 +151,6 @@ Called Natural (or Big-Step) Semantics
 
 ### Abstract interpretation
 
-The process of breaking expression into sub-expressions, processing them separatelly and combining results
-is called *structural recursion*
-
-And using inference rules in such a way is called *abstract interpretation*
-
----
-
 Rules of that form may be used to specify a lot of different (but similar in structure) processes:
 
 - typing
@@ -166,15 +160,17 @@ Rules of that form may be used to specify a lot of different (but similar in str
 - symbolic execution
 - etc..
 
+This is called **abstract interpretation**
+
 ***
 
 ### back to typing rules for our language
 
 Constants have their respective types:
 
-- $ \frac{}{\Gamma\,\vdash\,i\,:\,int} $ when i is an integer constant
-- $ \frac{}{\Gamma\,\vdash\,s\,:\,string} $ when s is a string constant
-- $ \frac{}{\Gamma\,\vdash\,b\,:\,bool} $ when b is a boolean constant
+- $ \frac{}{\Gamma\,\vdash\,i\,:\,int} $ when $i$ is an integer constant
+- $ \frac{}{\Gamma\,\vdash\,s\,:\,string} $ when $s$ is a string constant
+- $ \frac{}{\Gamma\,\vdash\,b\,:\,bool} $ when $b$ is a boolean constant
 
 in any context $\Gamma$
 
@@ -187,7 +183,7 @@ in any context $\Gamma$
 
 ---
 
-$ \frac{}{\{ P\,:\,\tau \}\,\vdash\,P\,:\,\tau} $ when P is a property access
+$ \frac{}{\{ P\,:\,\tau \}\,\vdash\,P\,:\,\tau} $ when $P$ is a property access
 
     | Property p ->
         match ctx.getPropType p with
@@ -197,9 +193,9 @@ $ \frac{}{\{ P\,:\,\tau \}\,\vdash\,P\,:\,\tau} $ when P is a property access
 
 ---
 
-$ \frac{\texttt{a1}\,:\,a_1,\;...,\;\texttt{an}\,:\,a_n}{\Gamma\,\vdash\,\texttt{F(a1,...,an)}\,:\,\tau} $ when F is a method access
+$ \frac{\texttt{a1}\,:\,a_1,\;...,\;\texttt{an}\,:\,a_n}{\Gamma\,\vdash\,\texttt{F(a1,...,an)}\,:\,\tau} $ when $F$ is a method access
 
-provided that $\Gamma$ containt $F\,:\,(\alpha_1,...,\alpha_n) \rightarrow \tau$
+Provided that $\Gamma$ containt $F\,:\,(\alpha_1,...,\alpha_n) \rightarrow \tau$
 
 ---
 
@@ -256,7 +252,7 @@ $ \frac{\Gamma\,\vdash\,\texttt{e}\,:\,bool}{\Gamma\,\vdash\,\texttt{check e}\,:
 
 $ \frac{\Gamma\,\vdash\,\texttt{c}\,:\,bool \;\; \Gamma\,\vdash\,\texttt{A}\,:\,\tau_1 \;\; \Gamma\,\vdash\,\texttt{B}\,:\,\tau_2 }{\Gamma\,\vdash\,\texttt{if c then A else B}\,:\,bool} $
 
-provided that $\texttt{A}$ and $\texttt{B}$ are functions in $\Gamma$
+Provided that $\texttt{A}$ and $\texttt{B}$ are functions in $\Gamma$
 
 ---
         | Exec(ifs, els) ->
