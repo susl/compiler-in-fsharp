@@ -24,4 +24,6 @@ let main argv =
         else
             Refuse('else')"
 
+    //Model(42, ["vip"]) |> evaluate "if Amount > 10 then Refuse(10)"
+
     0 // return an integer exit code

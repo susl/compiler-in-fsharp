@@ -48,9 +48,9 @@ let inferType ctx exp =
     let typeRule = function
         | Eval(c) -> typeComplexBoolExp c
         | Exec(ifs, els) ->
-            ifs |> List.iter (fun (c, a) ->
-                typeComplexBoolExp c |> ignore;
-                checkFuncCall a |> ignore;
+            ifs |> List.iter (fun (c, (fname, fargs)) ->
+                typeComplexBoolExp c |> ignore
+                typeValueExp (Func(fname, fargs)) |> ignore
             )
             match els with
                 | Some a -> checkFuncCall a |> ignore; typeof<bool>
