@@ -23,16 +23,16 @@ let inferType ctx exp =
             match ctx.getFuncType fname with
                 | None -> failwith <| sprintf "undefined fucntion %A" fname
                 | Some ftype -> checkFuncCall (fname, argExps) ftype
-    and checkFuncCall (fname, argExps) (freturnType, fargTypes) = 
+    and checkFuncCall (fname, argExps) (freturnType, fargTypes) =
         let argTypes = argExps |> List.map typeValueExp
         checkArgs argTypes fargTypes fname
         freturnType
-    and checkArgs argTypes fargTypes fname = 
+    and checkArgs argTypes fargTypes fname =
         List.iteri2 (fun idx argType fargType ->
             if(not(argType.Equals(fargType)))then
                 failwith <| sprintf "Argument of func %A at position %A has type %A, but %A was expected" fname idx argType fargType
         ) argTypes fargTypes
-        
+
     let rec typeComplexBoolExp = function
         | Comparison(left, op, right) ->
             let leftT = typeValueExp left
@@ -45,19 +45,19 @@ let inferType ctx exp =
         | And es -> es |> List.map typeComplexBoolExp |> ignore; typeof<bool>
         | Or es -> es |> List.map typeComplexBoolExp |> ignore; typeof<bool>
 
-    let typeAst = function
+    let typeRule = function
         | Eval(c) -> typeComplexBoolExp c
         | Exec(ifs, els) ->
-            ifs |> List.iter (fun (c, a) -> 
+            ifs |> List.iter (fun (c, a) ->
                 typeComplexBoolExp c |> ignore;
                 checkFuncCall a |> ignore;
             )
             match els with
                 | Some a -> checkFuncCall a |> ignore; typeof<bool>
                 | None -> typeof<bool>
-            
 
-    typeAst exp
+
+    typeRule exp
 
 let buildTypeCtx<'model> () =
     {
@@ -68,7 +68,7 @@ let buildTypeCtx<'model> () =
         getFuncType = fun f ->
             match typeof<'model>.GetMethod(f) with
             | null -> None
-            | mi -> 
+            | mi ->
                 let argTypes = mi.GetParameters() |> Array.map (fun p -> p.ParameterType) |> List.ofArray
                 Some(mi.ReturnType, argTypes)
     }

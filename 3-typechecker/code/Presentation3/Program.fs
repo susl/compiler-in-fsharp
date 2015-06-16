@@ -1,5 +1,5 @@
 ﻿let evaluate<'model> rule (model : 'model) =
-    let result = 
+    let result =
         rule
         |> Parser.parse
         |> Typechecker.typecheck<'model>
@@ -15,7 +15,13 @@ type Model(amount: int, tags: string list) =
 [<EntryPoint>]
 let main argv =
     Model(42, ["vip"]) |> evaluate "check not(Amount < 10) and HasTag('vip') = true"
-    Model(42, ["vip"]) |> evaluate "if Amount < 10 then Refuse('amount') else if HasTag('vip') = true then Refuse('vip') else Refuse('else')"
     Model(42, ["vip"]) |> evaluate "if Amount < 10 then Refuse('amount')"
+    Model(42, ["vip"]) |> evaluate
+        "if Amount < 10 then
+            Refuse('amount')
+        else if HasTag('vip') = true then
+            Refuse('vip')
+        else
+            Refuse('else')"
 
     0 // return an integer exit code

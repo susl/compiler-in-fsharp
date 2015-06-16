@@ -2,7 +2,7 @@
 
 // not(Amount < 10) and HasTag('vip') = true
 
-type ast = 
+type ast =
     | Eval of complexBoolExp
     | Exec of (complexBoolExp * funccall) list * funccall option
 and complexBoolExp =

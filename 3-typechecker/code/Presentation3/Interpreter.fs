@@ -16,7 +16,7 @@ let eval ctx exp =
         | Constant l -> evalConstant l
         | Property p -> ctx.getPropValue p
         | Func f -> callFunction f
-    and callFunction(fname, argExps) = 
+    and callFunction(fname, argExps) =
         let args = argExps |> List.map evalValueExp
         let f = ctx.getFunc fname
         f args
@@ -40,17 +40,17 @@ let eval ctx exp =
             op' left' right'
         | Not e -> e |> evalComplexBoolExp |> not
         | And es -> es |> List.map evalComplexBoolExp |> List.reduce (&&)
-        | Or es -> es |> List.map evalComplexBoolExp |> List.reduce (||)        
+        | Or es -> es |> List.map evalComplexBoolExp |> List.reduce (||)
 
-    let evalAst = function
+    let evalRule = function
         | Eval(c) -> evalComplexBoolExp c
         | Exec(ifs, els) ->
             let branch = ifs |> List.tryFind (fun (cond, _) -> evalComplexBoolExp cond)
             match branch, els with
                 | Some(_, action), _ | None, Some action -> callFunction action |> ignore; true
                 | None, None -> false
-        
-    evalAst exp
+
+    evalRule exp
 
 
 let dummyctx: context =
@@ -71,6 +71,6 @@ let buildEvalCtx<'model> (m: 'model) =
             | mi -> fun args -> mi.Invoke(m, Array.ofList args)
     }
 
-let interpret<'model> (model: 'model) ast = 
+let interpret<'model> (model: 'model) ast =
     let ctx = buildEvalCtx model
     eval ctx ast

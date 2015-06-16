@@ -43,9 +43,9 @@ let pif = pcomplex .>> str_ws "then" .>>. pfunccall
 let pelse = str_ws "else" >>. pfunccall
 let pexec = (str_ws "if") >>. sepBy1 pif (str_ws "else if") .>>. opt pelse |>> Exec
 
-let past = peval <|> pexec
+let prule = peval <|> pexec
 
 let parse =
-    run past >> function
+    run prule >> function
         | Success(result, _, _) -> result
         | Failure(_, error, _) -> failwith <| sprintf "%A" error
