@@ -3,7 +3,7 @@
 open Ast
 open System.Linq.Expressions
 
-let compile<'model> exp =
+let compileToLinq<'model> exp =
     let param = Expression.Parameter(typeof<'model>, "model")
 
     let compileConstant = function
@@ -60,31 +60,6 @@ let compile<'model> exp =
     lambda
 
 let compileToDynamicMethod<'model> exp =
-    let lambda = compile<'model> exp
+    let lambda = compileToLinq<'model> exp
     let compiled = lambda.Compile()
     fun model -> compiled.Invoke(model)
-
-open System
-open System.Reflection
-open System.Reflection.Emit
-
-let compileToDll<'model> exp methodName assemblyName = 
-    let appDomain = AppDomain.CurrentDomain
-    let fileName = assemblyName + ".dll"
-
-    let assemblyBuilder = appDomain.DefineDynamicAssembly(AssemblyName(assemblyName), AssemblyBuilderAccess.Save)
-
-    let moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName, fileName)
-    let typeBuilder = moduleBuilder.DefineType("Rules", TypeAttributes.Public)
-
-    let methodBuilder = 
-        typeBuilder.DefineMethod(
-            methodName, 
-            MethodAttributes.Public ||| MethodAttributes.Static ||| MethodAttributes.HideBySig,
-            typeof<bool>, [| typeof<'model> |])
-
-    let lambda = compile<'model> exp
-    lambda.CompileToMethod(methodBuilder)
-
-    typeBuilder.CreateType() |> ignore
-    assemblyBuilder.Save(fileName)

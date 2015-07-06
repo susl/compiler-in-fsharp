@@ -60,6 +60,7 @@
     <Compile Include="Typechecker.fs" />
     <Compile Include="CompileWithLinq.fs" />
     <Compile Include="CompileWithIL.fs" />
+    <Compile Include="CompileToDLL.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />

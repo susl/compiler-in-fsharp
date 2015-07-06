@@ -24,7 +24,8 @@ let compileToIL<'model> (il : ILGenerator) exp =
             let getter = prop.GetGetMethod(true)
             il.Emit(OpCodes.Ldarg_0)
             il.Emit(OpCodes.Callvirt, getter)
-        | Func(fname, argExps) ->
+        | Func f -> compileCall f
+    and compileCall(fname, argExps) = 
             il.Emit(OpCodes.Ldarg_0)
             argExps |> List.iter compileValueExp
             il.Emit(OpCodes.Callvirt, typeof<'model>.GetMethod(fname))
@@ -41,11 +42,25 @@ let compileToIL<'model> (il : ILGenerator) exp =
 
     let compileRule = function
         | Eval(c) -> compileComplexBoolExp c
-//        | Exec(ifs, els) -> 
-//            let rec compileIf(cond, call) = 
-//                compileComplexBoolExp cond
-//                il.Emit(OpCodes.)
-                
+        | Exec(ifs, els) -> 
+            ifs |> List.iter (fun (cond, call) -> 
+                compileComplexBoolExp cond
+                il.Emit(OpCodes.Ldc_I4_0)
+                il.Emit(OpCodes.Ceq)
+                let l = il.DefineLabel()
+                il.Emit(OpCodes.Brtrue, l)
+                compileCall call
+                il.Emit(OpCodes.Ldc_I4_1)
+                il.Emit(OpCodes.Ret)
+                il.MarkLabel(l)
+            )
+            els |> Option.iter (fun call -> 
+                compileCall call
+                il.Emit(OpCodes.Ldc_I4_1)
+                il.Emit(OpCodes.Ret)
+            )
+            il.Emit(OpCodes.Ldc_I4_0)
+            il.Emit(OpCodes.Ret)                
 
     compileRule exp
     il.Emit(OpCodes.Ret)
@@ -60,23 +75,3 @@ let compileToDynamicMethod<'model> exp =
     let compiledFun = method'.CreateDelegate(typeof<Func<'model, bool>>) :?> Func<'model, bool>
     let result = fun model -> compiledFun.Invoke(model)
     result
-
-let compileToDll<'model> exp methodName assemblyName = 
-    let appDomain = AppDomain.CurrentDomain
-    let fileName = assemblyName + ".dll"
-
-    let assemblyBuilder = appDomain.DefineDynamicAssembly(AssemblyName(assemblyName), AssemblyBuilderAccess.Save)
-
-    let moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName, fileName)
-    let typeBuilder = moduleBuilder.DefineType("Rules", TypeAttributes.Public)
-
-    let methodBuilder = 
-        typeBuilder.DefineMethod(
-            methodName, 
-            MethodAttributes.Public ||| MethodAttributes.Static ||| MethodAttributes.HideBySig,
-            typeof<bool>, [| typeof<'model> |])
-    let il = methodBuilder.GetILGenerator()
-    compileToIL<'model> il exp
-
-    typeBuilder.CreateType() |> ignore
-    assemblyBuilder.Save(fileName)
