@@ -44,8 +44,7 @@ module internal Inner =
             let arg, rest = parseValueExp tokens
             loop [arg] rest
 
-    and parseFuncCall tokens = 
-        match tokens with
+    and parseFuncCall = function
         | IDENTIFIER funcName :: rest ->
             let rest = expect LP rest
             let args, rest = parseArgs rest
@@ -59,13 +58,12 @@ module internal Inner =
             loopBinOp optoken opfunc (a :: acc) rest
         | rest -> (List.rev acc), rest
 
-    let rec parseAtomExp tokens = 
-        match tokens with
+    let rec parseAtomExp = function
         | LP :: rest -> 
             let b, rest = parseBoolExp rest
             let rest = expect RP rest
             b, rest
-        | _ -> 
+        | tokens -> 
             match parseValueExp tokens with
             | left, (OP op :: _ as rest) ->
                 let op, rest = parseOp rest
@@ -73,20 +71,28 @@ module internal Inner =
                 Comparison(left, op, right), rest
             | _ -> failwith "expected comparison expression"
 
-    and parseBoolExp = function
-        | NOT :: rest -> 
-            let b, rest = parseBoolExp rest
-            Not b, rest
-        | tokens ->
-            let atom, rest = parseAtomExp tokens
-            // this does not handle OR and AND (and NOT) on the same level
-            // something should be in parenthesis, but this is ok for rule engine
+    and parseBoolExp tokens = 
+        let rec parseOr tokens =
+            let first, rest = parseAnd tokens
             match rest with
-            | (OR as op) :: _ | (AND as op) :: _ -> 
-                let l, rest = loopBinOp op parseAtomExp [atom] rest
-                let ast = match op with OR -> Or l | AND -> And l | _ -> failwith "unexpected"
-                ast, rest
-            | _ -> atom, rest
+                | OR :: rest -> 
+                    let others, rest = parseOr rest
+                    Or([first; others]), rest
+                | rest -> first, rest
+        and parseAnd tokens = 
+            let first, rest = parseNot tokens
+            match rest with
+                | AND :: rest -> 
+                    let others, rest = parseAnd rest
+                    And([first; others]), rest
+                | rest -> first, rest
+        and parseNot = function
+            | NOT :: rest -> 
+                let b, rest = parseNot rest
+                Not b, rest
+            | rest -> parseAtomExp rest
+
+        parseOr tokens        
 
     let parseCond tokens = parseBoolExp tokens 
 
