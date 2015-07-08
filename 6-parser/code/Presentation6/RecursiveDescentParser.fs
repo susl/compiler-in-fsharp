@@ -23,6 +23,7 @@ module internal Inner =
     let rec parseValueExp = function
         | INT i :: rest -> Constant(Int i), rest
         | STRING s :: rest -> Constant(String s), rest
+        | BOOL b :: rest -> Constant(Bool b), rest
         | IDENTIFIER f :: LP :: rest as tokens-> 
             let f, rest = parseFuncCall tokens
             Func f, rest
@@ -121,13 +122,13 @@ module internal Inner =
                 loop (single :: acc) rest                
             | ELSE :: rest ->
                 let actions, rest = parseFuncCalls [] rest
-                (acc, actions), rest
+                (acc, Some actions), rest
             | rest ->
-                (acc, []), rest
+                (acc, None), rest
 
         let (matches, els), rest = loop [] tokens
         expectEOF rest
-        Exec (List.rev matches, Some els)
+        Exec (List.rev matches, els)
 
 
 let parse: token list -> ast = function

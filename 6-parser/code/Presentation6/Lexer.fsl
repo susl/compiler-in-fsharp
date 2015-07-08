@@ -1,0 +1,74 @@
+﻿{
+module Lexer
+
+open System
+open System.Text
+open LexerTokens
+
+open Microsoft.FSharp.Text.Lexing
+
+let lexeme = LexBuffer<_>.LexemeString
+let newline (lexbuf: LexBuffer<_>) = lexbuf.StartPos <- lexbuf.StartPos.NextLine
+}
+
+// Regular expressions
+let whitespace = [' ' '\t' ]
+let newline = ('\n' | '\r' '\n')
+
+let digit = ['0'-'9']
+let alpha = ['a'-'z' 'A'-'Z']
+let int = '-'?digit+
+let identifier = alpha(alpha|digit|['_' '.'])*
+
+rule tokenstream = parse
+| whitespace    { tokenstream lexbuf }
+| newline   { newline lexbuf; tokenstream lexbuf }
+| eof       { EOF }
+
+| "or" { OR }
+| "and" { AND }
+| "not" { NOT }
+| "if" { IF }
+| "then" { THEN }
+| "else" { ELSE }
+| "check" { CHECK }
+| "(" { LP }
+| ")" { RP }
+| "," { COMMA }
+
+| "=" { OP "=" }
+| "<" { OP "<" }
+| ">" { OP ">" }
+
+| int { INT <| Int32.Parse(lexeme lexbuf) }
+| "true"|"false" { BOOL <| Boolean.Parse(lexeme lexbuf) }
+
+| identifier { IDENTIFIER <| lexeme lexbuf }
+
+// we are cheating here, strings with quotes can not be parsed
+// we would need a separate rule (sublexer) to properly do this
+// see below
+//| "'"[^"'"]"'" { STRING <| lexeme lexbuf }
+
+| "'" { STRING <| string (StringBuilder 100) lexbuf }
+
+| _         { failwithf "ParseError: %s" <| lexeme lexbuf }
+
+// does not handle \n and other special chars + newline
+and string buff = parse
+| '\\' ( "'" | '\\' ) {
+    buff.Append (lexeme lexbuf) |> ignore
+    string buff lexbuf }
+| "'" { buff.ToString() }
+| _ {
+    buff.Append (lexeme lexbuf).[0] |> ignore
+    string buff lexbuf }
+
+// footer with some helper functions
+{
+let tokens src =
+    let lexbuf = LexBuffer<_>.FromString src
+    let stream = seq { while not lexbuf.IsPastEndOfStream do
+                       yield tokenstream lexbuf }
+    stream |> List.ofSeq
+}

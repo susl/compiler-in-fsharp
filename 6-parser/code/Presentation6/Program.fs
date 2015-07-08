@@ -1,6 +1,7 @@
 ﻿let evaluate<'model> rule (model : 'model) =
     rule
-    |> ParserCombinators.parse
+    |> Lexer.tokens |> RecursiveDescentParser.parse
+    //|> ParserCombinators.parse
     |> Interpreter.interpret model
     |> printfn "Evaluated \"%s\" on %A to %A" rule model
 
@@ -12,6 +13,7 @@ type Model(amount: int, tags: string list) =
 
 [<EntryPoint>]
 let main argv =
+    // TODO: not parsed correctly, because of NOT/AND priority
     Model(42, ["vip"]) |> evaluate "check not(Amount < 10) and HasTag('vip') = true"
     Model(42, ["vip"]) |> evaluate "if Amount < 10 then Refuse('amount')"
     Model(50, ["vip"]) |> evaluate
